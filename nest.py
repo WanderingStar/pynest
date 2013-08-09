@@ -246,10 +246,6 @@ def main():
     else:
         units = "F"
 
-    proxy= urllib2.ProxyHandler({'http': 'http://127.0.0.1:8080/', 'https': 'http://127.0.0.1:8080/'})
-    opener = urllib2.build_opener(proxy)
-    urllib2.install_opener(opener)
-    
     n = Nest(opts.user, opts.password, opts.serial, opts.index, units=units)
     n.login()
     n.get_status()
