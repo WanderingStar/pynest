@@ -89,6 +89,11 @@ class Nest:
         #print "res[device][serial].keys", res["device"][self.serial].keys()
         #print "res[shared][serial].keys", res["shared"][self.serial].keys()
 
+    def list_keys(self):
+        keys = self.status.keys()
+        keys.append("energy_latest")
+        return keys
+
     def key_stanza(self, key):
         if key in self.status:
             status_stanza = self.status[key]
@@ -117,9 +122,11 @@ class Nest:
 
         res = urllib2.urlopen(req).read()
         
-        res = self.loads(res)
-        
-        print json.dumps(res, indent=4)
+        if (res):
+            res = self.loads(res)
+            print json.dumps(res, indent=4)
+        else:
+            sys.stderr.write("No updates\n")
 
     def temp_in(self, temp):
         if (self.units == "F"):
@@ -214,10 +221,13 @@ def help():
     print "    show                  ... show everything"
     print "    curtemp               ... print current temperature"
     print "    curhumid              ... print current humidity"
+    print "    keys                  ... print subscribable keys"
+    print "    subscribe key [key ...] . print updates for keys"
     print
     print "examples:"
     print "    nest.py --user joe@user.com --password swordfish temp 73"
     print "    nest.py --user joe@user.com --password swordfish fan auto"
+    print "    nest.py --user joe@user.com --password swordfish subscribe energy_latest"
 
 def main():
     parser = create_parser()
@@ -262,6 +272,8 @@ def main():
         n.show_curtemp()
     elif (cmd == "curhumid"):
         print n.status["device"][n.serial]["current_humidity"]
+    elif (cmd == "keys"):
+        print " ".join(n.list_keys())
     elif (cmd == "subscribe"):
         if len(args)<2:
             print "please specify a temperature"
