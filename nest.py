@@ -20,6 +20,8 @@
 import urllib
 import urllib2
 import sys
+import calendar
+import time
 from optparse import OptionParser
 
 try:
@@ -86,6 +88,38 @@ class Nest:
         #print "res[device].keys", res["device"].keys()
         #print "res[device][serial].keys", res["device"][self.serial].keys()
         #print "res[shared][serial].keys", res["shared"][self.serial].keys()
+
+    def key_stanza(self, key):
+        if key in self.status:
+            status_stanza = self.status[key]
+            id = status_stanza.keys()[0]
+            version = status_stanza[id]["$version"]
+            timestamp = status_stanza[id]["$timestamp"]
+        elif key == "energy_latest":
+            id = self.status["device"].keys()[0]
+            version = 1
+            timestamp = calendar.timegm(time.gmtime()) * 1000
+        return { "key" : key + '.' + id,
+                 "version" : version,
+                 "timestamp" : timestamp }
+
+    def subscribe(self, keys):
+        data = json.dumps({"keys": [self.key_stanza(key) for key in keys]})
+        req = urllib2.Request(self.transport_url + "/v2/subscribe",
+                              data,
+                              headers={"user-agent":"Nest/1.1.0.10 CFNetwork/548.0.4",
+                               "Content-Type":"application/json",
+                               "X-nl-subscribe-timeout":60,
+                               "Accept-Language":"en-us",
+                               "Authorization":"Basic " + self.access_token,
+                               "X-nl-user-id": self.userid,
+                               "X-nl-protocol-version": "1"})
+
+        res = urllib2.urlopen(req).read()
+        
+        res = self.loads(res)
+        
+        print json.dumps(res, indent=4)
 
     def temp_in(self, temp):
         if (self.units == "F"):
@@ -202,6 +236,10 @@ def main():
     else:
         units = "F"
 
+    proxy= urllib2.ProxyHandler({'http': 'http://127.0.0.1:8080/', 'https': 'http://127.0.0.1:8080/'})
+    opener = urllib2.build_opener(proxy)
+    urllib2.install_opener(opener)
+    
     n = Nest(opts.user, opts.password, opts.serial, opts.index, units=units)
     n.login()
     n.get_status()
@@ -224,6 +262,11 @@ def main():
         n.show_curtemp()
     elif (cmd == "curhumid"):
         print n.status["device"][n.serial]["current_humidity"]
+    elif (cmd == "subscribe"):
+        if len(args)<2:
+            print "please specify a temperature"
+            sys.exit(-1)
+        n.subscribe(args[1:])
     else:
         print "misunderstood command:", cmd
         print "do 'nest.py help' for help"
